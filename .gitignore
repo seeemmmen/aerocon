@@ -1,0 +1,12 @@
+# Local build tools and generated files
+.tools/
+target/
+tmp/
+
+# IDE and operating system files
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+hs_err_pid*.log

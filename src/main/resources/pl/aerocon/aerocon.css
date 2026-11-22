@@ -1,0 +1,104 @@
+/* Aerocon: the navy / cyan control-room palette from the supplied mockup. */
+.root {
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-font-size: 13px;
+    -fx-background-color: #0a1227;
+    -fx-text-fill: #d9e2ed;
+    -fx-accent: #00d9bd;
+    -fx-focus-color: #00d9bd;
+    -fx-faint-focus-color: transparent;
+    -fx-color: #152139;
+}
+.label { -fx-text-fill: #d9e2ed; }
+.mono { -fx-font-family: "Consolas", monospace; }
+.muted, .field-label { -fx-text-fill: #8a9ab1; }
+.tiny { -fx-font-size: 10px; }
+.eyebrow { -fx-font-family: "Consolas", monospace; -fx-font-size: 10px; -fx-text-fill: #8a9ab1; }
+.accent { -fx-text-fill: #00d9bd; }
+.red-text { -fx-text-fill: #f0386b; }
+.title { -fx-font-size: 23px; -fx-font-weight: 400; }
+.section-title { -fx-font-size: 14px; -fx-font-weight: 600; }
+.hero-title { -fx-font-size: 39px; -fx-font-weight: 400; -fx-text-fill: #e2e8f2; }
+.hero-copy { -fx-font-size: 14px; -fx-text-fill: #8a9ab1; -fx-line-spacing: 5px; }
+.header { -fx-background-color: #0b172a; -fx-border-color: #243046; -fx-border-width: 0 0 1 0; }
+.brand { -fx-font-size: 23px; -fx-font-weight: 300; -fx-text-fill: #e1e8f3; }
+.brand-mark { -fx-border-color: #00d9bd; -fx-border-radius: 5px; -fx-padding: 3px 7px; -fx-text-fill: #00d9bd; -fx-font-size: 22px; }
+.footer { -fx-background-color: #0b172a; -fx-border-color: #243046; -fx-border-width: 1 0 0 0; }
+.footer .label { -fx-font-family: "Consolas", monospace; -fx-font-size: 9px; -fx-text-fill: #8291a8; }
+.panel { -fx-background-color: #101c32; -fx-border-color: #24334b; -fx-border-radius: 5px; -fx-background-radius: 5px; }
+.badge { -fx-font-family: "Consolas", monospace; -fx-font-size: 9px; -fx-padding: 5px 8px; -fx-background-color: #073738; -fx-background-radius: 3px; -fx-text-fill: #00d9bd; }
+.badge.red, .red-badge { -fx-background-color: #3b1630; -fx-text-fill: #f0386b; }
+.avatar { -fx-padding: 10px; -fx-background-color: #103039; -fx-background-radius: 4px; -fx-text-fill: #00d9bd; -fx-font-family: "Consolas"; }
+.button { -fx-cursor: hand; -fx-background-radius: 4px; -fx-border-radius: 4px; -fx-padding: 10px 14px; -fx-font-size: 12px; -fx-text-fill: #dce6f0; -fx-background-color: #19273e; -fx-border-color: #2c3a51; }
+.button:hover { -fx-background-color: #22334d; -fx-border-color: #496078; }
+.button:focused { -fx-border-color: #00d9bd; }
+.button:disabled { -fx-opacity: .4; }
+.primary-button { -fx-background-color: #00d9bd; -fx-border-color: #00d9bd; -fx-text-fill: #042627; -fx-font-weight: 600; }
+.primary-button:hover { -fx-background-color: #35edd5; -fx-border-color: #35edd5; }
+.secondary-button { -fx-background-color: #152238; }
+.danger-button { -fx-text-fill: #ff7193; -fx-background-color: #35172c; -fx-border-color: #6a2843; }
+.danger-button:hover { -fx-background-color: #5b203d; -fx-border-color: #ed2863; }
+.icon-button { -fx-background-color: transparent; -fx-border-color: transparent; -fx-font-size: 17px; -fx-padding: 3px 9px; -fx-text-fill: #879bb4; }
+.text-button { -fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: #00d9bd; -fx-padding: 5px 0; }
+.text-button:hover, .icon-button:hover { -fx-background-color: #14263b; }
+.field, .text-field, .password-field, .combo-box-base, .spinner {
+    -fx-background-color: #0a1423; -fx-border-color: #29374e; -fx-border-radius: 4px; -fx-background-radius: 4px; -fx-text-fill: #dce6f0; -fx-prompt-text-fill: #5d7089; -fx-padding: 10px 12px;
+}
+.text-field:focused, .password-field:focused, .combo-box-base:focused { -fx-border-color: #00bba9; }
+.combo-box-base { -fx-padding: 3px 6px; }
+.compact-combo { -fx-padding: 0; }
+.compact-combo > .list-cell { -fx-padding: 6px 4px; -fx-font-family: "Consolas"; -fx-text-fill: #00d9bd; }
+.user-menu { -fx-background-color: transparent; -fx-padding: 0 2px 2px 0; }
+.user-menu .label { -fx-font-size: 12px; }
+.user-menu > .arrow-button { -fx-padding: 0 0 0 6px; }
+.combo-box .list-cell { -fx-text-fill: #d9e2ed; -fx-background-color: transparent; -fx-padding: 8px; }
+.combo-box-popup .list-view { -fx-background-color: #122038; -fx-border-color: #2a3e54; }
+.combo-box-popup .list-cell { -fx-background-color: #122038; -fx-text-fill: #cdd9e9; }
+.combo-box-popup .list-cell:hover, .combo-box-popup .list-cell:filled:selected { -fx-background-color: #183b45; -fx-text-fill: #00d9bd; }
+.arrow { -fx-background-color: #8596ab; }
+.login-left { -fx-border-color: #243046; -fx-border-width: 0 1 0 0; }
+.login-form { -fx-background-color: #0a1426; }
+.divider, .separator .line { -fx-border-color: #253149; -fx-border-width: 1 0 0 0; }
+.note { -fx-background-color: #12283a; -fx-background-radius: 4px; -fx-padding: 13px; -fx-text-fill: #9cacc0; }
+.flight-row { -fx-background-color: transparent; -fx-border-color: transparent; -fx-background-radius: 3px; -fx-cursor: hand; }
+.flight-row:hover { -fx-background-color: #182c42; }
+.flight-row:selected, .flight-row.selected { -fx-background-color: #15333d; -fx-border-color: #1a686a; -fx-border-radius: 3px; }
+.warning-card { -fx-background-color: #2a172c; -fx-border-color: #ed2863; -fx-border-width: 0 0 0 2; -fx-padding: 15px; }
+.warning-card.acknowledged { -fx-background-color: #142c32; -fx-border-color: #00d9bd; }
+.warning-time { -fx-font-family: "Consolas", monospace; -fx-font-size: 27px; -fx-text-fill: #f0386b; }
+.detail-value { -fx-font-family: "Consolas", monospace; -fx-font-size: 15px; -fx-text-fill: #dce6f0; }
+.route { -fx-background-color: #0c172a; -fx-background-radius: 3px; -fx-padding: 13px 10px; }
+.scroll-pane, .scroll-pane > .viewport { -fx-background-color: transparent; }
+.scroll-pane { -fx-padding: 0; -fx-background-insets: 0; }
+.scroll-bar { -fx-background-color: transparent; -fx-pref-width: 7px; -fx-pref-height: 7px; }
+.scroll-bar .thumb { -fx-background-color: #2c4057; -fx-background-radius: 7px; }
+.scroll-bar .increment-button, .scroll-bar .decrement-button { -fx-pref-height: 0; -fx-pref-width: 0; -fx-padding: 0; }
+.scroll-bar .increment-arrow, .scroll-bar .decrement-arrow { -fx-shape: ""; -fx-padding: 0; }
+.check-box { -fx-text-fill: #c6d2e2; }
+.check-box .box { -fx-background-color: #0a1423; -fx-border-color: #3b4d64; -fx-border-radius: 3px; -fx-padding: 3px; }
+.check-box:selected .box { -fx-background-color: #00d9bd; -fx-border-color: #00d9bd; }
+.check-box:selected .mark { -fx-background-color: #062a2b; }
+.slider .track { -fx-background-color: #29374c; -fx-pref-height: 3px; }
+.slider .thumb { -fx-background-color: #00d9bd; }
+.dialog-pane { -fx-background-color: #101a2b; -fx-border-color: #2b4055; -fx-border-radius: 6px; -fx-padding: 8px; }
+.dialog-pane > .button-bar > .container { -fx-padding: 18px 20px 12px; }
+.dialog-pane:header .header-panel { -fx-background-color: #101a2b; }
+.dialog-pane:header .header-panel .label { -fx-font-size: 21px; -fx-text-fill: #dce6f0; }
+.dialog-pane .content.label { -fx-text-fill: #b8c7d8; }
+.error { -fx-text-fill: #ff7897; -fx-font-size: 12px; }
+.table-view { -fx-background-color: #101c32; -fx-border-color: #24334b; -fx-background-radius: 4px; -fx-padding: 0; }
+.table-view .column-header-background, .table-view .column-header, .table-view .filler { -fx-background-color: #1b2941; -fx-border-color: transparent; }
+.table-view .column-header .label { -fx-text-fill: #8e9fb7; -fx-font-family: "Consolas"; -fx-font-size: 10px; -fx-alignment: CENTER_LEFT; -fx-padding: 9px; }
+.table-row-cell { -fx-background-color: #101c32; -fx-cell-size: 42px; -fx-border-color: #233149; -fx-border-width: 0 0 1 0; }
+.table-row-cell:odd { -fx-background-color: #121f35; }
+.table-row-cell:selected { -fx-background-color: #173b46; }
+.table-row-cell:empty { -fx-background-color: #101c32; -fx-border-width: 0; }
+.table-cell { -fx-text-fill: #c4d1e2; -fx-alignment: CENTER_LEFT; -fx-padding: 7px 10px; -fx-border-color: transparent; -fx-font-size: 12px; }
+.table-view .placeholder .label { -fx-text-fill: #8291a8; }
+.context-menu { -fx-background-color: #15233a; -fx-border-color: #314359; }
+.menu-item:focused { -fx-background-color: #1b3c46; }
+.menu-item .label { -fx-text-fill: #dce6f0; }
+.tab-button { -fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 12px 15px; -fx-text-fill: #8a9bb2; }
+.tab-button.active { -fx-text-fill: #00d9bd; -fx-border-color: #00d9bd; -fx-border-width: 0 0 2 0; }
+.stat-value { -fx-font-family: "Consolas"; -fx-font-size: 26px; -fx-text-fill: #00d9bd; }
+.toast { -fx-background-color: #123b40; -fx-border-color: #25736e; -fx-border-radius: 5px; -fx-background-radius: 5px; -fx-padding: 12px 20px; -fx-text-fill: #b6f8ed; }
