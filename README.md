@@ -1,101 +1,103 @@
-# Aerocon — JavaFX prototype
+# Aerocon — JavaFX Prototype
 
-Прототип интерфейса мониторинга воздушного движения по макетам из предоставленного PDF: тёмно-синий фон, бирюзовый радар и красные предупреждения. Интерфейс на английском, как в макете.
+A JavaFX air traffic monitoring interface prototype based on the supplied PDF mockups. It uses navy backgrounds, a cyan radar, red conflict warnings, and an English UI.
 
-![Экран радара](docs/screenshots/radar.png)
+![Radar screen](docs/screenshots/radar.png)
 
-Другие экраны: [вход](docs/screenshots/login.png), [администрирование](docs/screenshots/admin.png).
+Other screens: [login](docs/screenshots/login.png), [administration](docs/screenshots/admin.png).
 
-## Запуск на Windows
+## Run on Windows
 
-Дважды нажми **run.cmd** или выполни в терминале из папки проекта:
+Double-click **run.cmd**, or run the following command from the project directory:
 
 ```powershell
 .\run.cmd
 ```
 
-Скрипт использует локальные JDK 21 и Maven из `.tools`. При первом запуске на другом компьютере он скачает их и проверит контрольные суммы. Нужен интернет для загрузки инструментов и зависимостей; системная установка Java не требуется.
+The script uses a local JDK 21 and Maven from `.tools`. On the first run on another computer, it downloads these tools and verifies their checksums. An internet connection is required to download tools and dependencies; a system-wide Java installation is not required.
 
-Демонстрационный вход:
+Demo credentials:
 
 | Username | Password | Role |
 | --- | --- | --- |
 | `maya.chen` | `aerocon` | Controller |
 | `sarah.patel` | `aerocon` | Admin |
 
-Роль выбирается в форме входа. В прототипе оба демонстрационных имени могут открывать любую роль. Это демонстрационный вход, а не настоящая система авторизации.
+Select a role in the login form. Both demo usernames can access either role in this prototype. This is a demo login flow, not a production authentication system.
 
-Если JDK 21+ и Maven уже установлены, можно использовать `mvn javafx:run`. В IntelliJ IDEA открой `pom.xml` как Maven-проект и выбери JDK 21.
+If JDK 21+ and Maven are already installed, you can use `mvn javafx:run`. In IntelliJ IDEA, open `pom.xml` as a Maven project and select JDK 21.
 
-## Что работает
+## Features
 
-- Вход, показ пароля, выбор роли и выход через меню пользователя.
-- Радар с восемью исходными рейсами, движением самолётов, выбором на радаре или в списке, карточкой рейса и отображением траектории.
-- Пауза и продолжение, скорость 1×–8×, масштаб радара и полноэкранный режим.
-- Добавление рейса с проверкой полей и выбором начальной позиции на радаре.
-- Генерация 1–50 самолётов: три сценария, конфликтная пара, случайные высоты, коммерческие рейсы и очистка текущего движения.
-- Отдельное подтверждение предупреждений для каждой конфликтной пары.
-- Панель администратора: поиск и фильтр операторов, добавление, изменение и удаление с подтверждением; фильтры истории инцидентов и экспорт видимых записей в CSV.
+- Login, password visibility toggle, role selection, and logout through the user menu.
+- Radar with eight initial flights, aircraft movement, selection on the radar or in the flight list, flight details, and trajectory display.
+- Pause and resume, playback speeds from 1× to 8×, radar zoom, and full-screen mode.
+- Flight creation with input validation and initial position selection on the radar.
+- Generation of 1–50 aircraft at a time, with three presets, an optional conflict pair, randomized altitudes, commercial traffic, and an option to clear existing traffic.
+- Independent warning acknowledgement for each conflict pair.
+- Administration panel with operator search and role filtering, user creation and editing, deletion with confirmation, incident history filters, and CSV export of visible records.
 
-Данные хранятся в памяти и сбрасываются после закрытия приложения. Движение самолётов и конфликтные сценарии демонстрационные; реальный расчёт сепарации, актуальных CPA, высоты и времени до сближения ещё не реализован. История инцидентов и учётные записи администратора — отдельные демонстрационные наборы данных, без базы данных и серверной авторизации.
+Data is stored in memory and resets when the application closes. Aircraft movement and conflict scenarios are demonstrations; actual separation, CPA (closest point of approach), vertical motion, and time-to-CPA calculations are not implemented. Incident history and operator accounts are separate demo datasets, without a database or server-side authentication.
 
-## Структура
+## Project Structure
 
 ```text
 project_po2/
-├── pom.xml                              # Maven: Java/JavaFX, зависимости, сборка
-├── run.cmd                              # запуск на Windows двойным щелчком
-├── run.ps1                              # загрузка локальных инструментов, сборка и запуск
-├── verify.ps1                           # запуск функциональных проверок интерфейса
-├── README.md                            # описание, инструкции и это дерево
-├── .gitignore                           # исключения для сборки, кэша и файлов IDE
+├── pom.xml                              # Maven: Java/JavaFX versions, dependencies, build
+├── run.cmd                              # double-click launcher for Windows
+├── run.ps1                              # local tool downloads, build, and launch
+├── verify.ps1                           # runs functional UI checks
+├── README.md                            # overview, instructions, and this directory tree
+├── .gitignore                           # excludes build output, caches, and IDE files
 ├── src/
 │   ├── main/
-│   │   ├── java/pl/aerocon/              # исходный Java-код; pl.aerocon — имя пакета
-│   │   │   ├── AeroconApplication.java   # точка входа, логин, экран контролера, переходы, таймер
-│   │   │   ├── model/                   # данные предметной области
-│   │   │   │   └── Flight.java          # самолёт: параметры, координаты, стартовые деморейсы
-│   │   │   └── ui/                      # компоненты и окна интерфейса
-│   │   │       ├── RadarView.java       # Canvas: сетка, кольца, самолёты, пути, выбор мышью
-│   │   │       ├── SimulationDialogs.java # добавление рейса, генератор, проверка ввода
-│   │   │       ├── AdminView.java       # пользователи, формы управления, история, экспорт CSV
-│   │   │       └── Ui.java              # общие фабрики кнопок, подписей, полей и панелей
-│   │   └── resources/pl/aerocon/        # ресурсы, которые Maven включает в приложение
-│   │       └── aerocon.css              # основные стили JavaFX: палитра, шрифты, элементы UI
+│   │   ├── java/pl/aerocon/              # Java source code; pl.aerocon is the package name
+│   │   │   ├── AeroconApplication.java   # entry point, login, controller view, navigation, timer
+│   │   │   ├── model/                   # domain data
+│   │   │   │   └── Flight.java          # aircraft parameters, coordinates, and initial demo flights
+│   │   │   └── ui/                      # UI components and dialogs
+│   │   │       ├── RadarView.java       # Canvas: grid, rings, aircraft, paths, mouse selection
+│   │   │       ├── SimulationDialogs.java # flight creation, traffic generator, input validation
+│   │   │       ├── AdminView.java       # users, management dialogs, incident history, CSV export
+│   │   │       └── Ui.java              # shared factories for buttons, labels, fields, and panels
+│   │   └── resources/pl/aerocon/        # resources Maven includes in the application
+│   │       └── aerocon.css              # main JavaFX styles: palette, fonts, and UI controls
 │   └── test/java/pl/aerocon/
-│       └── PrototypeSmokeTest.java       # 33 проверки реальных элементов интерфейса
-├── docs/screenshots/                     # сохранённые превью приложения
-│   ├── login.png                        # экран входа
-│   ├── radar.png                        # экран контролера
-│   └── admin.png                        # экран администратора
-├── .tools/                              # локальные JDK и Maven; скачиваются скриптом запуска
-├── target/                              # результат сборки Maven: классы, JAR, отчёты
-└── tmp/                                 # временные изображения PDF и проверочные скриншоты
+│       └── PrototypeSmokeTest.java       # 33 checks using actual UI controls
+├── docs/screenshots/                     # saved application previews
+│   ├── login.png                        # login screen
+│   ├── radar.png                        # controller screen
+│   └── admin.png                        # administration screen
+├── .tools/                              # local JDK and Maven downloaded by the launch script
+├── target/                              # Maven build output: classes, JAR, reports
+└── tmp/                                 # temporary PDF renders and verification screenshots
 ```
 
-`.tools`, `target` и `tmp` исключены через `.gitignore`. Исходники редактируются в `src`; файлы в `target` пересоздаются при сборке.
+`.tools`, `target`, and `tmp` are excluded through `.gitignore`. Edit source files in `src`; files in `target` are regenerated during builds.
 
-## Где менять оформление
+## Styling and Layout
 
-- **Общая тема — `src/main/resources/pl/aerocon/aerocon.css`.** В `.root` заданы базовые цвета и шрифт, в `.primary-button` — бирюзовые кнопки, в `.panel` — панели, в `.warning-card` — предупреждения, в `.table-view` — таблицы. Файл подключается в `AeroconApplication.start()` и отдельно в диалогах.
-- **Графика радара — `src/main/java/pl/aerocon/ui/RadarView.java`.** Цвета `BACKGROUND`, `GRID`, `RING`, `CYAN`, `RED` и команды Canvas определяют сетку, кольца, самолёты и линии. Изменение общей CSS-темы само по себе не перекрасит рисунок на Canvas.
-- **Дополнительные стили админки — `src/main/java/pl/aerocon/ui/AdminView.java`.** Вызовы `setStyle()` задают компактные размеры элементов, цвета статусов и строк таблицы. Они дополняют и местами переопределяют общий CSS.
-- **Расположение элементов — Java-классы экранов.** Контейнеры `VBox`, `HBox`, `GridPane`, `BorderPane`, размеры и отступы собираются в `AeroconApplication`, `AdminView` и `SimulationDialogs`. `Ui.java` создаёт общие элементы и назначает им CSS-классы.
+- **Main theme — `src/main/resources/pl/aerocon/aerocon.css`.** `.root` defines the base colors and font, `.primary-button` styles the cyan buttons, `.panel` styles panels, `.warning-card` styles warnings, and `.table-view` styles tables. The stylesheet is loaded in `AeroconApplication.start()` and separately for dialogs.
+- **Radar graphics — `src/main/java/pl/aerocon/ui/RadarView.java`.** The `BACKGROUND`, `GRID`, `RING`, `CYAN`, and `RED` colors, together with Canvas drawing commands, define the grid, rings, aircraft, and lines. Changing the CSS theme alone does not recolor the Canvas drawing.
+- **Additional administration styles — `src/main/java/pl/aerocon/ui/AdminView.java`.** `setStyle()` calls define compact control sizes, status colors, and table row colors. They supplement and sometimes override the main CSS.
+- **Layout — the Java classes for each screen.** `VBox`, `HBox`, `GridPane`, and `BorderPane` containers, dimensions, and spacing are configured in `AeroconApplication`, `AdminView`, and `SimulationDialogs`. `Ui.java` creates shared controls and assigns CSS classes.
 
-FXML-файлов в проекте нет: интерфейс собирается программно средствами JavaFX.
+The project has no FXML files: the interface is built programmatically with JavaFX.
 
-Сборка без запуска:
+## Build and Verify
+
+Build without launching the application:
 
 ```powershell
 .\run.cmd -BuildOnly
 ```
 
-Функциональная проверка интерфейса (открывает тестовое окно JavaFX):
+Run functional UI checks (opens a JavaFX test window):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\verify.ps1
 ```
 
-Проверка проходит через реальные элементы интерфейса: вход, паузу, продолжение, формы, генерацию движения, отдельное подтверждение предупреждений и поиск в панели администратора.
+The checks interact with actual UI controls to verify login, pause and resume, forms, traffic generation, independent warning acknowledgement, and search in the administration panel.
 
-Проект использует Java 21, JavaFX 21 и Maven. Основная тема вынесена в CSS; графика Canvas и часть дополнительных стилей задаются в Java-коде.
+The project uses Java 21, JavaFX 21, and Maven. The main theme is defined in CSS; Canvas graphics and some additional styles are defined in Java code.
