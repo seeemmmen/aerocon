@@ -1,5 +1,6 @@
 param(
-    [switch]$BuildOnly
+    [switch]$BuildOnly,
+    [string[]]$MavenArguments = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -57,9 +58,9 @@ try {
     Push-Location -LiteralPath $projectDirectory
     try {
         if ($BuildOnly) {
-            & (Join-Path $mavenDirectory 'bin\mvn.cmd') --batch-mode package
+            & (Join-Path $mavenDirectory 'bin\mvn.cmd') --batch-mode @MavenArguments package
         } else {
-            & (Join-Path $mavenDirectory 'bin\mvn.cmd') --batch-mode compile javafx:run
+            & (Join-Path $mavenDirectory 'bin\mvn.cmd') --batch-mode @MavenArguments compile javafx:run
         }
         if ($LASTEXITCODE -ne 0) {
             throw "Maven exited with code $LASTEXITCODE."

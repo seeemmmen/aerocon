@@ -1,0 +1,5 @@
+# Copy to database.properties and set the dedicated local database account.
+# This example contains no working database password.
+db.url=jdbc:mariadb://127.0.0.1:3306/aerocon
+db.user=aerocon
+db.password=CHANGE_ME

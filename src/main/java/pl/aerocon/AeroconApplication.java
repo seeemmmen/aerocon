@@ -11,6 +11,16 @@ import java.util.Locale;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.UUID;
+import java.util.Arrays;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import javax.imageio.ImageIO;
 import javafx.animation.KeyFrame;
 import javafx.animation.PauseTransition;
@@ -30,12 +40,16 @@ import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import pl.aerocon.model.Flight;
+import pl.aerocon.model.Operator;
+import pl.aerocon.data.AeroconRepository;
+import pl.aerocon.data.DatabaseConfig;
+import pl.aerocon.data.JdbcAeroconRepository;
 import pl.aerocon.ui.AdminView;
 import pl.aerocon.ui.RadarView;
 import pl.aerocon.ui.SimulationDialogs;
 import static pl.aerocon.ui.Ui.*;
 
-/** Visual, local-only prototype of the Aerocon training interface. */
+/** Aerocon training interface with persistent operators and incident history. */
 public final class AeroconApplication extends Application {
     private final List<Flight> flights = Flight.demoFlights();
     private final BorderPane shell = new BorderPane();
@@ -53,6 +67,18 @@ public final class AeroconApplication extends Application {
     private int range = 15;
     private String username = "Maya Chen", scenario = "London upper airspace";
     private AdminView adminView;
+    private AeroconRepository repository;
+    private Operator currentUser;
+    private boolean databaseReady, stopping;
+    private Button loginButton, retryDatabase;
+    private Label databaseStatus;
+    private final ExecutorService databaseWorker = Executors.newSingleThreadExecutor(task -> {
+        Thread thread = new Thread(task, "aerocon-database"); thread.setDaemon(true); return thread;
+    });
+    private final String sessionId = UUID.randomUUID().toString();
+    private final Map<Flight, String> trackKeys = new IdentityHashMap<>();
+    private final Map<String, Long> incidentIds = new HashMap<>();
+    private final Set<String> savingIncidents = new HashSet<>(), failedIncidents = new HashSet<>(), acknowledgingIncidents = new HashSet<>();
 
     public static void main(String[] args) { launch(args); }
 
@@ -69,11 +95,8 @@ public final class AeroconApplication extends Application {
         Map<String, String> parameters = getParameters() == null ? Map.of() : getParameters().getNamed();
         if (parameters.containsKey("width")) stage.setWidth(Double.parseDouble(parameters.get("width")));
         if (parameters.containsKey("height")) stage.setHeight(Double.parseDouble(parameters.get("height")));
-        String view = parameters.getOrDefault("view", "login");
-        if (view.equals("radar") || view.equals("admin")) {
-            loggedIn = true; administrator = view.equals("admin"); username = administrator ? "Sarah Patel" : "Maya Chen";
-            if (administrator) showAdmin(); else showRadar();
-        } else showLogin();
+        showLogin();
+        initializeDatabase();
         clock = new Timeline(new KeyFrame(Duration.seconds(1), e -> tick()));
         clock.setCycleCount(Timeline.INDEFINITE); clock.play();
         stage.show(); stage.centerOnScreen();
@@ -85,7 +108,35 @@ public final class AeroconApplication extends Application {
         }
     }
 
-    @Override public void stop() { if (clock != null) clock.stop(); }
+    @Override public void stop() {
+        stopping = true;
+        if (clock != null) clock.stop();
+        if (adminView != null) adminView.shutdown();
+        databaseWorker.shutdownNow();
+        if (repository != null) repository.close();
+    }
+
+    private void initializeDatabase() {
+        databaseReady = false; loginButton.setDisable(true);
+        databaseStatus.setText("Connecting to database…"); retryDatabase.setVisible(false); retryDatabase.setManaged(false);
+        databaseTask(() -> {
+            AeroconRepository connected = new JdbcAeroconRepository(DatabaseConfig.load());
+            connected.initialize(); return connected;
+        }, connected -> {
+            repository = connected; databaseReady = true; loginButton.setDisable(false);
+            databaseStatus.setText("● Database connected");
+        }, failure -> {
+            databaseStatus.setText(failure.getMessage()); retryDatabase.setVisible(true); retryDatabase.setManaged(true);
+        });
+    }
+
+    private <T> void databaseTask(Supplier<T> work, Consumer<T> success, Consumer<Throwable> failure) {
+        CompletableFuture.supplyAsync(work, databaseWorker).whenComplete((value, error) -> Platform.runLater(() -> {
+            if (stopping) return;
+            if (error == null) success.accept(value);
+            else { Throwable cause = error instanceof CompletionException && error.getCause() != null ? error.getCause() : error; failure.accept(cause); }
+        }));
+    }
 
     private HBox header(String workspace) {
         Label mark = text("◎", "brand-mark");
@@ -100,7 +151,8 @@ public final class AeroconApplication extends Application {
             alertCount = text("1 ACTIVE ALERT", "badge", "red");
             if (!administrator) header.getChildren().add(alertCount);
             utcClock = text(utc(), "eyebrow");
-            header.getChildren().addAll(utcClock, text(username.equals("Sarah Patel") ? "SP" : "MC", "avatar"));
+            String initials = Arrays.stream(username.strip().split("\\s+")).limit(2).map(part -> part.substring(0, 1)).reduce("", String::concat).toUpperCase(Locale.ROOT);
+            header.getChildren().addAll(utcClock, text(initials, "avatar"));
             MenuButton user = new MenuButton(username + "  ⌄"); user.getStyleClass().add("user-menu");
             MenuItem signOut = new MenuItem("Log out"); signOut.setOnAction(e -> showLogin());
             if (administrator) {
@@ -120,6 +172,8 @@ public final class AeroconApplication extends Application {
     }
 
     private void showLogin() {
+        currentUser = null;
+        if (adminView != null) { adminView.shutdown(); adminView = null; }
         loggedIn = false; radar = null; flightRows = null; warnings = null; details = null;
         shell.setTop(header(""));
         Label hero = text("Clarity in every\ncontrolled airspace.", "hero-title");
@@ -144,23 +198,42 @@ public final class AeroconApplication extends Application {
         }); reveal.setTooltip(new Tooltip("Show or hide password"));
         ComboBox<String> role = new ComboBox<>(); role.getItems().addAll("Controller", "Admin"); role.setValue("Controller"); role.setId("role-select");
         Label error = text("", "error"); error.setWrapText(true); error.setManaged(false);
-        Button submit = button("→  Log In", "primary-button", () -> {
-            if (!password.getText().equals("aerocon") || !List.of("maya.chen", "sarah.patel").contains(login.getText().strip().toLowerCase(Locale.ROOT))) {
-                error.setText("Use maya.chen or sarah.patel with password aerocon."); error.setManaged(true); return;
-            }
-            administrator = role.getValue().equals("Admin"); loggedIn = true;
-            username = login.getText().strip().equalsIgnoreCase("sarah.patel") ? "Sarah Patel" : "Maya Chen";
-            if (administrator) showAdmin(); else showRadar();
+        Button submit = new Button("→  Log In"); submit.getStyleClass().add("primary-button");
+        loginButton = submit;
+        submit.setDisable(!databaseReady);
+        submit.setOnAction(event -> {
+            if (!databaseReady) return;
+            submit.setDisable(true); submit.setText("Signing in…"); error.setText(""); error.setManaged(false);
+            String loginValue = login.getText(), requestedRole = role.getValue();
+            char[] secret = password.getText().toCharArray();
+            databaseTask(() -> {
+                try { return repository.authenticate(loginValue, secret, requestedRole); }
+                finally { Arrays.fill(secret, '\0'); }
+            }, authenticated -> {
+                submit.setDisable(false); submit.setText("→  Log In");
+                if (authenticated.isEmpty()) {
+                    error.setText("Invalid credentials or role, or account is disabled."); error.setManaged(true); return;
+                }
+                currentUser = authenticated.get(); administrator = currentUser.role().equals("Admin"); loggedIn = true;
+                username = currentUser.name();
+                if (administrator) showAdmin(); else showRadar();
+            }, failure -> {
+                submit.setDisable(false); submit.setText("→  Log In"); error.setText(failure.getMessage()); error.setManaged(true);
+            });
         });
         submit.setId("login-button"); submit.setMaxWidth(Double.MAX_VALUE); submit.setDefaultButton(true);
-        Label authorized = text("♙  Authorized personnel only. All access attempts are\n     recorded and monitored.", "muted", "tiny");
+        Label authorized = text("♙  Authorized personnel only. Your account must be\n     enabled for the selected role.", "muted", "tiny");
+        databaseStatus = text(databaseReady ? "● Database connected" : "Connecting to database…", "muted", "tiny");
+        databaseStatus.setWrapText(true); databaseStatus.setId("database-status");
+        retryDatabase = button("Retry database connection", "text-button", this::initializeDatabase);
+        retryDatabase.setVisible(false); retryDatabase.setManaged(false);
         VBox form = new VBox(20,
             text("01 / OPERATOR ACCESS", "eyebrow", "accent"),
             text("Log in to Aerocon", "title"),
             text("Enter your assigned credentials to access\nthe air traffic control environment.", "muted"),
             field("Username", login), field("Password", row(4, passwordStack, reveal)), field("Role", role),
-            text("Available roles: Controller / Admin", "muted", "tiny"), submit, error, new Separator(), authorized,
-            text("Demo access: maya.chen / aerocon", "eyebrow"),
+            text("Available roles: Controller / Admin", "muted", "tiny"), submit, error, databaseStatus, retryDatabase, new Separator(), authorized,
+            text("Initial demo account: maya.chen / aerocon", "eyebrow"),
             text("Need access? Contact your system administrator.", "muted", "tiny"));
         form.setMaxWidth(350); form.setPadding(new Insets(24, 0, 24, 0));
         StackPane right = new StackPane(form); right.setPadding(new Insets(32, 50, 32, 50)); right.getStyleClass().add("login-form");
@@ -274,7 +347,34 @@ public final class AeroconApplication extends Application {
         return keys;
     }
 
-    private String pairKey(Flight first, Flight second) { return first.callsign + "/" + second.callsign; }
+    private String pairKey(Flight first, Flight second) {
+        return trackKeys.computeIfAbsent(first, ignored -> UUID.randomUUID().toString()) + "/"
+            + trackKeys.computeIfAbsent(second, ignored -> UUID.randomUUID().toString());
+    }
+
+    private void saveConflict(String pair, Flight first, Flight second) {
+        if (!databaseReady || !loggedIn || savingIncidents.contains(pair) || incidentIds.containsKey(pair)) return;
+        savingIncidents.add(pair); failedIncidents.remove(pair);
+        databaseTask(() -> repository.recordConflict(sessionId + "/" + pair, first.callsign, second.callsign), incident -> {
+            savingIncidents.remove(pair); incidentIds.put(pair, incident.id());
+            if (incident.status().equals("Acknowledged")) acknowledgedPairs.add(pair);
+            refreshFlights();
+            if (adminView != null) adminView.refresh();
+        }, failure -> {
+            savingIncidents.remove(pair); failedIncidents.add(pair); refreshFlights(); notice(failure.getMessage());
+        });
+    }
+
+    private void acknowledgeConflict(String pair) {
+        Long id = incidentIds.get(pair);
+        if (id == null || currentUser == null || acknowledgingIncidents.contains(pair)) return;
+        acknowledgingIncidents.add(pair); refreshFlights();
+        String actor = currentUser.username();
+        databaseTask(() -> { repository.acknowledgeIncident(id, actor); return true; }, ignored -> {
+            acknowledgingIncidents.remove(pair); acknowledgedPairs.add(pair); refreshFlights();
+            if (adminView != null) adminView.refresh(); notice("Conflict warning acknowledged and saved");
+        }, failure -> { acknowledgingIncidents.remove(pair); refreshFlights(); notice(failure.getMessage()); });
+    }
 
     private void selectFlight(Flight flight) {
         selected = flight; if (radar != null) radar.setSelected(flight); refreshFlights();
@@ -290,8 +390,14 @@ public final class AeroconApplication extends Application {
         for (int i = 0; i + 1 < conflicts.size(); i += 2) {
             Flight a = conflicts.get(i), b = conflicts.get(i + 1);
             String pair = pairKey(a, b); boolean acknowledged = acknowledgedPairs.contains(pair);
-            Button ack = button(acknowledged ? "✓  Acknowledged" : "Acknowledge →", "text-button", () -> { acknowledgedPairs.add(pair); refreshFlights(); notice("Conflict warning acknowledged"); });
-            ack.setId("acknowledge-warning"); ack.setDisable(acknowledged);
+            if (!incidentIds.containsKey(pair) && !failedIncidents.contains(pair)) saveConflict(pair, a, b);
+            boolean saved = incidentIds.containsKey(pair), saving = savingIncidents.contains(pair) || acknowledgingIncidents.contains(pair);
+            String action = acknowledged ? "✓  Acknowledged" : saving ? "Saving…" : saved ? "Acknowledge →" : "Retry saving";
+            Button ack = button(action, "text-button", () -> {
+                if (incidentIds.containsKey(pair)) acknowledgeConflict(pair);
+                else { saveConflict(pair, a, b); refreshFlights(); }
+            });
+            ack.setId("acknowledge-warning"); ack.setDisable(acknowledged || saving);
             VBox card = new VBox(12,
                 row(4, text("FLIGHT PAIR", "eyebrow"), spacer(), text("TIME TO CPA", "eyebrow")),
                 row(8, new VBox(4, text(a.callsign, "mono"), text(b.callsign, "mono")), spacer(), text("01:08", "warning-time")),
@@ -334,9 +440,11 @@ public final class AeroconApplication extends Application {
     }
 
     private void showAdmin() {
+        if (currentUser == null || !currentUser.role().equals("Admin")) return;
         radar = null; flightRows = null; warnings = null; details = null;
         shell.setTop(header("Administration"));
-        if (adminView == null) adminView = new AdminView(this::showRadar, this::notice);
+        if (adminView == null) adminView = new AdminView(repository, currentUser, this::showRadar, this::notice);
+        else adminView.refresh();
         shell.setCenter(adminView);
     }
 

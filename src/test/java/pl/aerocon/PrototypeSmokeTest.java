@@ -5,6 +5,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 import javax.imageio.ImageIO;
 import javafx.animation.PauseTransition;
@@ -33,7 +34,7 @@ public final class PrototypeSmokeTest extends Application {
         try {
             app = new AeroconApplication();
             app.start(stage);
-            Platform.runLater(() -> safely(this::testLoginAndPause));
+            Platform.runLater(() -> safely(() -> await(this::loginReady, this::testLoginAndPause)));
         } catch (Throwable error) { fail(error); }
     }
 
@@ -46,11 +47,26 @@ public final class PrototypeSmokeTest extends Application {
         PasswordField password = lookup(root(), "#password-field", PasswordField.class);
         username.setText("unknown"); password.setText("wrong");
         click("login-button");
-        check(root().lookup("#login-button") != null && label(root(), s -> s.contains("Use maya.chen")), "invalid login stays on login screen and explains demo access");
+        await(() -> loginReady() && invalidCredentials(), () -> {
+            check(root().lookup("#login-button") != null && invalidCredentials(), "invalid login stays on login screen and rejects credentials");
+            username.setText("maya.chen"); password.setText("aerocon");
+            select(lookup(root(), "#role-select", ComboBox.class), "Admin");
+            click("login-button");
+            await(() -> loginReady() && invalidCredentials(), () -> {
+                check(invalidCredentials(), "controller credentials cannot enter the admin role");
+                select(lookup(root(), "#role-select", ComboBox.class), "Controller");
+                loginController(username, password);
+            });
+        });
+    }
+
+    private void loginController(TextField username, PasswordField password) {
         username.setText("maya.chen"); password.setText("aerocon");
         click("login-button");
-        check(rowCount() == 8 && root().lookup("#add-flight") != null, "controller login opens eight demo tracks");
-        smallSnapshot("radar-small.png", this::testPause);
+        await(() -> root().lookup("#add-flight") != null, () -> {
+            check(rowCount() == 8, "controller login opens eight demo tracks");
+            smallSnapshot("radar-small.png", this::testPause);
+        });
     }
 
     private void testPause() {
@@ -65,10 +81,6 @@ public final class PrototypeSmokeTest extends Application {
                 click("pause-simulation");
                 testFlightForms();
                 testGeneratorAndAlerts();
-                testAdminLogin();
-                System.out.println("SMOKE TEST PASSED: " + checks + " checks");
-                app.stop();
-                Platform.exit();
             });
         });
     }
@@ -131,14 +143,27 @@ public final class PrototypeSmokeTest extends Application {
         check(rowCount() == 4 && alertButtons().size() == 1, "clear and generate replaces traffic with four tracks and one conflict pair");
         generate(3, false, true);
         check(rowCount() == 7 && alertButtons().size() == 2 && label(root(), s -> s.equals("2 ACTIVE ALERTS")), "append adds exactly three tracks and a second conflict pair");
+        await(() -> alertButtons().size() == 2 && alertButtons().stream().noneMatch(Button::isDisabled), this::acknowledgeFirstPair);
+    }
+
+    private void acknowledgeFirstPair() {
         alertButtons().getFirst().fire();
-        check(alertButtons().stream().filter(Button::isDisabled).count() == 1 && label(root(), s -> s.equals("1 ACTIVE ALERT")), "acknowledging one pair leaves the other warning active");
-        alertButtons().stream().filter(b -> !b.isDisabled()).findFirst().orElseThrow().fire();
-        check(alertButtons().stream().allMatch(Button::isDisabled) && label(root(), s -> s.equals("0 ACTIVE ALERTS")), "second pair can be acknowledged independently");
+        await(() -> alertButtons().stream().filter(Button::isDisabled).count() == 1 && label(root(), s -> s.equals("1 ACTIVE ALERT")), () -> {
+            check(label(root(), s -> s.equals("1 ACTIVE ALERT")), "acknowledging one pair leaves the other warning active");
+            alertButtons().stream().filter(b -> !b.isDisabled()).findFirst().orElseThrow().fire();
+            await(() -> alertButtons().stream().allMatch(Button::isDisabled) && label(root(), s -> s.equals("0 ACTIVE ALERTS")), () -> {
+                check(label(root(), s -> s.equals("0 ACTIVE ALERTS")), "second pair can be acknowledged independently");
+                testAcknowledgementPersistence();
+            });
+        });
+    }
+
+    private void testAcknowledgementPersistence() {
         generate(2, false, false);
         check(rowCount() == 9 && alertButtons().stream().allMatch(Button::isDisabled) && label(root(), s -> s.equals("0 ACTIVE ALERTS")), "append preserves acknowledgement for existing pairs");
         generate(2, true, false);
         check(rowCount() == 2 && alertButtons().isEmpty() && label(root(), s -> s.contains("No conflict scenarios active")), "clear and normal generation removes conflict warnings");
+        testAdminLogin();
     }
 
     private void generate(int count, boolean clear, boolean conflict) {
@@ -155,11 +180,19 @@ public final class PrototypeSmokeTest extends Application {
         MenuButton account = all(root(), MenuButton.class).stream()
                 .filter(b -> b.getItems().stream().anyMatch(i -> i.getText().equals("Log out"))).findFirst().orElseThrow();
         account.getItems().stream().filter(i -> i.getText().equals("Log out")).findFirst().orElseThrow().fire();
+        await(this::loginReady, this::submitAdminLogin);
+    }
+
+    private void submitAdminLogin() {
         check(root().lookup("#login-button") != null, "logout returns to the login form");
         lookup(root(), "#username-field", TextField.class).setText("sarah.patel");
         lookup(root(), "#password-field", PasswordField.class).setText("aerocon");
         select(lookup(root(), "#role-select", ComboBox.class), "Admin");
         click("login-button");
+        await(() -> label(root(), s -> s.equals("User & incident administration")) && all(root(), TableView.class).stream().anyMatch(t -> t.getItems().size() == 6), this::testAdminSearch);
+    }
+
+    private void testAdminSearch() {
         check(label(root(), s -> s.equals("User & incident administration")), "admin login opens the administration workspace");
         TextField search = all(root(), TextField.class).stream().filter(f -> "Search name or email".equals(f.getPromptText())).findFirst().orElseThrow();
         search.setText("Elena");
@@ -168,6 +201,9 @@ public final class PrototypeSmokeTest extends Application {
         check(all(root(), TableView.class).stream().anyMatch(t -> t.getItems().size() == 6), "clearing admin search restores six operators");
         all(root(), Button.class).stream().filter(b -> b.getText().contains("Incident Logs")).findFirst().orElseThrow().fire();
         check(label(root(), s -> s.contains("INCIDENTS")), "admin can open incident history");
+        System.out.println("SMOKE TEST PASSED: " + checks + " checks");
+        app.stop();
+        Platform.exit();
     }
 
     private Parent root() { stage.getScene().getRoot().applyCss(); stage.getScene().getRoot().layout(); return stage.getScene().getRoot(); }
@@ -204,6 +240,14 @@ public final class PrototypeSmokeTest extends Application {
     private void check(boolean condition, String message) { if (!condition) throw new AssertionError(message); checks++; System.out.println("PASS " + checks + ": " + message); }
     private void later(double milliseconds, Runnable action) { PauseTransition wait = new PauseTransition(Duration.millis(milliseconds)); wait.setOnFinished(e -> safely(action)); wait.play(); }
     private void safely(Runnable action) { try { action.run(); } catch (Throwable error) { fail(error); } }
+    private boolean loginReady() { Node login = root().lookup("#login-button"); return login != null && !login.isDisabled(); }
+    private boolean invalidCredentials() { return label(root(), s -> s.equals("Invalid credentials or role, or account is disabled.")); }
+    private void await(BooleanSupplier condition, Runnable next) { await(condition, next, System.nanoTime() + 20_000_000_000L); }
+    private void await(BooleanSupplier condition, Runnable next, long deadline) {
+        if (condition.getAsBoolean()) { next.run(); return; }
+        if (System.nanoTime() >= deadline) throw new AssertionError("Timed out waiting for the asynchronous JavaFX operation");
+        later(40, () -> await(condition, next, deadline));
+    }
     private void fail(Throwable error) { error.printStackTrace(); if (app != null) app.stop(); Platform.exit(); System.exit(1); }
     private void smallSnapshot(String name, Runnable next) {
         double width = stage.getWidth(), height = stage.getHeight();

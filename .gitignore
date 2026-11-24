@@ -3,6 +3,11 @@
 target/
 tmp/
 
+# Machine-specific database credentials and local exports
+/config/database.properties
+/.env
+/data/*.sql
+
 # IDE and operating system files
 .idea/
 *.iml
